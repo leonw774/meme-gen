@@ -8,14 +8,16 @@ from keras import optimizers
 from keras import backend as K
 from keras import applications
 from keras.models import Model
-from keras.layers import Activation, Concatenate, Dense, Dropout, Embedding, Flatten, Input, Lambda, LSTM
+from keras.layers import Activation, Concatenate, Dense, Dropout, Embedding, Flatten, Input, Lambda, LSTM, merge, multiply, Permute, RepeatVector, TimeDistributed
 
-CREATE_NEW_W2V = True
+CREATE_NEW_W2V = False
 WORD_VEC_SIZE = 200
-LSTM_DIM = 128
-EPOCHS = 10
+MAX_LENGTH = 8
+LSTM_DIM = 64
+ATTENTION_DIM = 16 
+EPOCHS = 1
+ENDING_MARK = "<eos>"
 ENABLE_RANDOM_TRAINING = False
-
 
 training_image_file_list = [("images/" + i) for i in os.listdir("images/")]
 training_caption_file_list = [("p_captions/" + i) for i in os.listdir("captions/")]
@@ -23,27 +25,43 @@ training_jokes_file_list = [("p_jokes/" + i) for i in os.listdir("p_jokes/")]
 testing_image_file_list = [("test/images/" + i) for i in os.listdir("test/images/")]
 
 #########################################
-# Prepare W2V
+# Prepare W2V and Trainging Data
 #########################################
 total_word_count = 0
+caption_list = []
+joke_list = []
+w2v_train_sentence_list = []
+print("\npreparing sentence to train...")
+
+# captions' sentence
+for filename in training_caption_file_list :
+    line_list = open(filename, 'r', encoding = 'utf-8-sig').readlines()
+    caption = []
+    for line in line_list :
+        word_list = line.lower().split(" ")
+        word_list.append(ENDING_MARK)
+        total_word_count += len(word_list)
+        caption.extend(word_list)
+    if len(caption) > MAX_LENGTH : MAX_LENGTH = len(caption)
+    caption_list.append(caption)
+w2v_train_sentence_list.extend(caption_list)
+# jokes' sentence
+for filename in training_jokes_file_list :
+    line_list = open(filename, 'r', encoding = 'utf-8-sig').readlines()
+    joke_sentence = []
+    for line in line_list :
+        word_list = line.lower().split(" ")
+        word_list.append(ENDING_MARK)
+        if len(word_list) <= 1 : continue
+        total_word_count += len(word_list)
+        joke_sentence.extend(word_list)
+    joke_list.append(joke_sentence)
+w2v_train_sentence_list.extend(joke_list)
+
+#########################################
+# Train W2V (if True)
+#########################################
 if CREATE_NEW_W2V :
-    w2v_train_sentence_list = []
-    print("\npreparing sentence to train...")
-    # captions' sentence
-    for filename in training_caption_file_list :
-        line = open(filename, 'r', encoding = 'utf-8-sig').read().split(" ")
-        total_word_count += len(line)
-        w2v_train_sentence_list.append(line)
-    # jokes' sentence
-    for filename in training_jokes_file_list :
-        line_list = open(filename, 'r', encoding = 'utf-8-sig').readlines()
-        post_sentence = []
-        for line in line_list :
-            line = line.split(" ")
-            if len(line) <= 1 : continue
-            total_word_count += len(line)
-            post_sentence.extend(line)
-        w2v_train_sentence_list.append(post_sentence)
     print("training w2v model...")
     word_model = word2vec.Word2Vec(w2v_train_sentence_list,
         iter = 12,
@@ -53,38 +71,15 @@ if CREATE_NEW_W2V :
         workers = 4,
         min_count = 3)
     word_model.save("meme_word2vec_by_char.model")
-    del w2v_train_sentence_list
 else :
-    word_model = word2vec.Word2Vec.load("meme_word2vec_by_char.model")
+     word_model = word2vec.Word2Vec.load("meme_word2vec_by_char.model")
+del w2v_train_sentence_list
 word_vector = word_model.wv
 VOCAB_SIZE = word_vector.syn0.shape[0]
-print("\nvector size: ", WORD_VEC_SIZE, "\nvocab size: ", VOCAB_SIZE, "\ntotal_word_count:", total_word_count)
-print(word_vector.most_similar("怕", topn = 10))
-
-#########################################
-# Trainging Data Preparation
-#########################################
-caption_list = []
-for fname in training_caption_file_list :
-    line_list = open(fname, 'r', encoding = 'utf-8-sig').readlines()
-    caption = []
-    for line in line_list :
-        word_list = line.split() + ['\n']
-        total_word_count += len(word_list)
-        if len(word_list) <= 1 : continue
-        caption += word_list
-    caption_list.append(caption)
-
-joke_list = []
-for fname in training_jokes_file_list :
-    line_list = open(fname, 'r', encoding = 'utf-8-sig').readlines()
-    post_sentence = []
-    for line in line_list :
-        word_list = line.split() + ['\n']
-        total_word_count += len(word_list)
-        if len(word_list) <= 1 : continue
-        post_sentence += word_list
-    joke_list.append(post_sentence)
+print("vector size: ", WORD_VEC_SIZE)
+print("vocab size: ", VOCAB_SIZE)
+print("total_word_count:", total_word_count)
+#print(word_vector.most_similar("怕", topn = 10))
 
 def make_sentence_matrix(word_list) :
     input_matrix  = np.zeros([1, len(word_list) + 1, WORD_VEC_SIZE], dtype=np.int32)
@@ -153,9 +148,12 @@ state_in = Dense(LSTM_DIM)(classes)
 caption_in = Input([None, WORD_VEC_SIZE])
 zeros = Lambda(lambda x: K.zeros_like(x), output_shape = lambda s: s)(state_in)
 # lstm initial state: [hidden_state, memory_cell_state]; default is zero vectors
-x = LSTM(LSTM_DIM, return_sequences = True, stateful = False)(caption_in, initial_state = [state_in, zeros])
-x = Dropout(0.2)(x)
-caption_out = Dense(VOCAB_SIZE, activation = "softmax")(x)
+lstm_out = LSTM(LSTM_DIM, return_sequences = True, stateful = False) (caption_in, initial_state = [state_in, zeros])
+# Attention                    
+attention = TimeDistributed(Dense(LSTM_DIM, activation = "softmax"))(lstm_out)
+#attention = Permute([2, 1])(attention)
+representation = multiply([lstm_out, attention])
+caption_out = Dense(VOCAB_SIZE, activation = "softmax")(representation)
 
 # Model
 MemeGen = Model([image_in, caption_in], caption_out)
@@ -168,18 +166,13 @@ MemeGen.compile(loss = 'sparse_categorical_crossentropy', optimizer = adam_05)
 # Train Model
 #########################################
 image_data_size = len(training_image_file_list)
-joke_data_size = len(training_jokes_file_list) // EPOCHS
+
 for epoch in range(EPOCHS) :
     print(epoch, "/", EPOCHS)
-    if ENABLE_RANDOM_TRAINING :
-        MemeGen.fit_generator(generator = generator_random_training_data(),
-            steps_per_epoch = joke_data_size,
-            epochs = 1,
-            verbose = 2)
     MemeGen.fit_generator(generator = generator_pair_training_data(),
         steps_per_epoch = image_data_size,
         epochs = 1,
-        verbose = 2)
+        verbose = 1)
 
 #########################################
 # Predict Test
@@ -201,5 +194,5 @@ for test_img_name in testing_image_file_list :
         pred = sample(pred[0, -1], temperature = 0.7)
         pred_word = word_vector.wv.index2word[np.argmax(pred[0])]
         pred_sentence += pred_word
-        #if pred_word == "\n" and pred_sentence != "" : continue
+        if pred_word == ENDING_MARK : continue
     open("test/captions/" + test_img_name[12:-3] + "txt", "w+",  encoding = 'utf-8-sig').write(pred_sentence)

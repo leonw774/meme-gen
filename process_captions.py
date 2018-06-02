@@ -11,7 +11,10 @@ filename_list = os.listdir(cap_path)
 for i, filename in enumerate(filename_list) :
     cap_string = ""
     if i % 10 == 0 : print(i)
-    cap_string = open(cap_path + filename, 'r', encoding = 'utf-8-sig').read()
+    try :
+        cap_string = open(cap_path + filename, 'r', encoding = 'utf-8-sig').read()
+    except :
+        cap_string = open(cap_path + filename, 'r').read()
     cap_string = re.sub(": ", "", cap_string)
     cut_cap = jb.cut(cap_string, cut_all = False)
     open(processed_path + filename, 'w+', encoding = 'utf-8-sig').write(" ".join(cut_cap))
