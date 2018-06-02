@@ -1,0 +1,8 @@
+/jieba_zhtw
+*.model
+*.h5
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.txt
