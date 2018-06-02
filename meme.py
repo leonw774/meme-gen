@@ -14,6 +14,9 @@ CREATE_NEW_W2V = True
 WORD_VEC_SIZE = 200
 LSTM_DIM = 128
 EPOCHS = 10
+ENABLE_RANDOM_TRAINING = False
+
+
 training_image_file_list = [("images/" + i) for i in os.listdir("images/")]
 training_caption_file_list = [("p_captions/" + i) for i in os.listdir("captions/")]
 training_jokes_file_list = [("p_jokes/" + i) for i in os.listdir("p_jokes/")]
@@ -71,7 +74,7 @@ for fname in training_caption_file_list :
         if len(word_list) <= 1 : continue
         caption += word_list
     caption_list.append(caption)
-    
+
 joke_list = []
 for fname in training_jokes_file_list :
     line_list = open(fname, 'r', encoding = 'utf-8-sig').readlines()
@@ -131,12 +134,16 @@ def generator_random_training_data(resize = None) :
         input_cap, target_cap = make_sentence_matrix(joke_line)
         yield [img, input_cap], target_cap
 
-# Image Decoder
+
+#########################################
+# Build Model
+#########################################
+# Image Encoder
+Imagenet = applications.mobilenet.MobileNet()
+Imagenet.trainable = False
 # 使用 MobileNet 是因為它佔用空間最小(17MB)
 # 論文裡，同Google的im2txt模型，用的是 InceptionV3
 # https://github.com/tensorflow/models/tree/master/research/im2txt/
-Imagenet = applications.mobilenet.MobileNet()
-Imagenet.trainable = False
 
 image_in = Input([None, None, 3])
 classes = Imagenet(image_in)
@@ -157,14 +164,26 @@ sgd_nesterov = optimizers.sgd(lr = 0.01, momentum = 0.9, nesterov = True)
 adam_05 = optimizers.Adam(lr = 0.001, beta_1 = 0.5)
 MemeGen.compile(loss = 'sparse_categorical_crossentropy', optimizer = adam_05)
 
+#########################################
 # Train Model
+#########################################
 image_data_size = len(training_image_file_list)
 joke_data_size = len(training_jokes_file_list) // EPOCHS
 for epoch in range(EPOCHS) :
     print(epoch, "/", EPOCHS)
-    MemeGen.fit_generator(generator = generator_random_training_data(), steps_per_epoch = joke_data_size, epochs = 1, verbose = 2)
-    MemeGen.fit_generator(generator = generator_pair_training_data(), steps_per_epoch = image_data_size, epochs = 1, verbose = 2)
-    
+    if ENABLE_RANDOM_TRAINING :
+        MemeGen.fit_generator(generator = generator_random_training_data(),
+            steps_per_epoch = joke_data_size,
+            epochs = 1,
+            verbose = 2)
+    MemeGen.fit_generator(generator = generator_pair_training_data(),
+        steps_per_epoch = image_data_size,
+        epochs = 1,
+        verbose = 2)
+
+#########################################
+# Predict Test
+#########################################
 def sample(prediction, temperature = 1.0) :
     prediction = np.asarray(prediction).astype('float64')
     prediction = np.log(prediction) / temperature
@@ -183,6 +202,4 @@ for test_img_name in testing_image_file_list :
         pred_word = word_vector.wv.index2word[np.argmax(pred[0])]
         pred_sentence += pred_word
         #if pred_word == "\n" and pred_sentence != "" : continue
-    outfile = open("test/captions/" + test_img_name[12:-3] + "txt", "w+",  encoding = 'utf-8-sig')
-    outfile.write(pred_sentence)
-    outfile.close()
+    open("test/captions/" + test_img_name[12:-3] + "txt", "w+",  encoding = 'utf-8-sig').write(pred_sentence)

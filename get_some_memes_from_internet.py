@@ -9,10 +9,10 @@ ignore_tag_list = [
 ]
 ignore_tag_list = [ ("\">" + s + "</span>") for s in ignore_tag_list]
 
-caption_length_min_limit = 7
+caption_length_min_limit = 8
 
 p = 1
-for _ in range(1000) :
+for _ in range(50) :
     p += 1
     fname = str(p)
     #print("examing: ", fname)
