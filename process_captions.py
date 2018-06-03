@@ -3,8 +3,8 @@ import re
 import jieba_zhtw as jb
 
 jb.dt.cache_file = 'jieba.cache.zhtw'
-cap_path = "captions/"
-processed_path = "p_captions/"
+cap_path = "train/captions/"
+processed_path = "train/p_captions/"
 
 filename_list = os.listdir(cap_path)
 

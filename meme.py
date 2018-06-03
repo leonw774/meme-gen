@@ -19,9 +19,9 @@ EPOCHS = 1
 ENDING_MARK = "<eos>"
 ENABLE_RANDOM_TRAINING = False
 
-training_image_file_list = [("images/" + i) for i in os.listdir("images/")]
-training_caption_file_list = [("p_captions/" + i) for i in os.listdir("captions/")]
-training_jokes_file_list = [("p_jokes/" + i) for i in os.listdir("p_jokes/")]
+training_image_file_list = [("train/images/" + i) for i in os.listdir("train/images/")]
+training_caption_file_list = [("train/p_captions/" + i) for i in os.listdir("train/p_captions/")]
+training_jokes_file_list = [("train/p_jokes/" + i) for i in os.listdir("train/p_jokes/")]
 testing_image_file_list = [("test/images/" + i) for i in os.listdir("test/images/")]
 
 #########################################
