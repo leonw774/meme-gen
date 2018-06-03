@@ -140,7 +140,7 @@ def gen_random_training_data(resize = None) :
 #########################################
 # Build Model
 #########################################
-# Image Encoder
+### Image Encoder ###
 Imagenet = applications.mobilenet.MobileNet()
 Imagenet.trainable = False
 # 使用 MobileNet 是因為它佔用空間最小(17MB)
@@ -151,33 +151,28 @@ image_in = Input([None, None, 3])
 classes = Imagenet(image_in)
 state_in = Dense(LSTM_UNIT)(classes)
 
-# LSTM Decoder 
+### LSTM Decoder ###
 cap_in = Input([None, WORD_VEC_SIZE])
-# 這個lambda的output是與input的形狀相同的零矩陣
 zeros = Lambda(lambda x: K.zeros_like(x), output_shape = lambda s: s)(state_in)
-# lstm initial state: [hidden_state, memory_cell_state]; default is zero vectors
+# 上面這個Lambda的output是與input形狀相同的零矩陣
+# LSTM initial state: [hidden_state, memory_cell_state]; default is zero vectors
 lstm_out = LSTM(LSTM_UNIT, return_sequences = True, stateful = False) (cap_in, initial_state = [state_in, zeros])
 print(lstm_out.shape) # (BATCH, TIME_STEP, LSTM_UNIT)
 # Attention
 # 我也不太清楚attention到底是怎麼回事
 # 反正就是有一個Dense好像會「看」之前的lstm_out
 # 判斷現在這個lstm_out裡每一個值的重要性(softmax)，然後multiply
-# 我也不懂論文上的attention unit 128是怎樣，反正從網路上的code來看，keras或許只能用1
-attention = TimeDistributed(Dense(ATTENTION_UNIT))(lstm_out)
-print(attention.shape)
+# 我也不懂論文上的attention unit: 128是怎樣，反正從網路上的code來看，純keras或許只能用1
+attention = TimeDistributed(Dense(1, activation = "softmax")(lstm_out)
 # (BATCH, TIME_STEP, ATTENTION_UNIT) /* ATTENTION_UNIT = 1 */
 
 attention = Lambda(lambda x: K.batch_flatten(x))(attention)
-print(attention.shape)
 # (BATCH, TIME_STEP)
 
-attention = Activation('softmax')(attention)
 attention = RepeatVector(LSTM_UNIT)(attention)
-print(attention.shape)
 # (BATCH, LSTM_UNIT, TIME_STEP)
 
 attention = Permute([2,1])(attention)
-print(attention.shape)
 # (BATCH, TIME_STEP, LSTM_UNIT)
 
 representation = multiply([lstm_out, attention])
