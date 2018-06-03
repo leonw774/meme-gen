@@ -14,7 +14,7 @@ CREATE_NEW_W2V = False
 WORD_VEC_SIZE = 200 # Suggest: 300
 MAX_LENGTH = 8
 LSTM_UNIT = 32 # Suggest: 512
-ATTENTION_UNIT = MAX_LENGTH # Suggest: 128
+ATTENTION_UNIT = 1 # Suggest: 128???
 EPOCHS = 1
 ENDING_MARK = "<eof>"
 ENABLE_RANDOM_TRAINING = False
@@ -157,22 +157,30 @@ cap_in = Input([None, WORD_VEC_SIZE])
 zeros = Lambda(lambda x: K.zeros_like(x), output_shape = lambda s: s)(state_in)
 # lstm initial state: [hidden_state, memory_cell_state]; default is zero vectors
 lstm_out = LSTM(LSTM_UNIT, return_sequences = True, stateful = False) (cap_in, initial_state = [state_in, zeros])
+print(lstm_out.shape) # (BATCH, TIME_STEP, LSTM_UNIT)
 # Attention
 # 我也不太清楚attention到底是怎麼回事
-# 反正就是這個Dense好像會「看」之前的lstm_out，判斷現在這個lstm_out裡每一個值的重要性(softmax)，然後multiply
-# 但是我們這裡因為文句長度不一，keras不讓我做tensor的Flatten，所以只能做個很不完整的實現
-#attention = TimeDistributed(Dense(ATTENTION_UNIT, activation = "softmax"))(lstm_out)
-attention = TimeDistributed(Dense(ATTENTION_UNIT, activation = "softmax"))(lstm_out)
-print(attention.shape) # (TIME_STEP, ATTENTION_UNIT)
+# 反正就是有一個Dense好像會「看」之前的lstm_out
+# 判斷現在這個lstm_out裡每一個值的重要性(softmax)，然後multiply
+# 我也不懂論文上的attention unit 128是怎樣，反正從網路上的code來看，keras或許只能用1
+attention = TimeDistributed(Dense(ATTENTION_UNIT))(lstm_out)
+print(attention.shape)
+# (BATCH, TIME_STEP, ATTENTION_UNIT) /* ATTENTION_UNIT = 1 */
+
 attention = Lambda(lambda x: K.batch_flatten(x))(attention)
-print(attention.shape) # (TIME_STEP * ATTENTION_UNIT)
+print(attention.shape)
+# (BATCH, TIME_STEP)
+
 attention = Activation('softmax')(attention)
 attention = RepeatVector(LSTM_UNIT)(attention)
-print(attention.shape) # (LSTM_UNIT, TIME_STEP * ATTENTION_UNIT)
+print(attention.shape)
+# (BATCH, LSTM_UNIT, TIME_STEP)
+
 attention = Permute([2,1])(attention)
-print(attention.shape) # (TIME_STEP * ATTENTION_UNIT, LSTM_UNIT)
+print(attention.shape)
+# (BATCH, TIME_STEP, LSTM_UNIT)
+
 representation = multiply([lstm_out, attention])
-#print(representation.shape)
 cap_out = Dense(VOCAB_SIZE, activation = "softmax")(representation)
 
 # Model
@@ -190,8 +198,8 @@ rmsprop = optimizers.RMSprop(lr = 0.01)
 def sparse_categorical_perplexity(y_true, y_pred) :
     return K.exp(K.sparse_categorical_crossentropy(y_true, y_pred))
 
-MemeGen.compile(loss = 'sparse_categorical_crossentropy',
-                metrics = ["sparse_categorical_perplexity"],
+MemeGen.compile(loss = "sparse_categorical_crossentropy",
+                metrics = [sparse_categorical_perplexity],
                 optimizer = sgd)
 
 #########################################
@@ -200,7 +208,7 @@ MemeGen.compile(loss = 'sparse_categorical_crossentropy',
 image_data_size = len(training_image_file_list)
 for epoch in range(EPOCHS) :
     print(epoch, "/", EPOCHS)
-    # keras不給我用train_on_batch，因為每張圖大小都不一樣，算了沒差
+    # keras不給我用train_on_batch，因為每張圖大小不一樣，算了沒差
     MemeGen.fit_generator(generator = gen_pair_training_data(2),
         steps_per_epoch = image_data_size,
         epochs = 1,
