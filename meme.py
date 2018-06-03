@@ -118,7 +118,7 @@ def gen_pair_training_data(batch_num = 1, resize = None) :
             count += 1
             img = get_image(img_filename)
             input_cap, target_cap = make_sentence_matrix(caption_list[i])
-            yield [batch_img, batch_input_cap], batch_target_cap
+            yield [img, input_cap], target_cap
             # end if count
         # end for training_image_file_list
     #end infinite while
@@ -159,16 +159,18 @@ zeros = Lambda(lambda x: K.zeros_like(x), output_shape = lambda s: s)(state_in)
 lstm_out = LSTM(LSTM_UNIT, return_sequences = True, stateful = False) (cap_in, initial_state = [state_in, zeros])
 # Attention
 # 我也不太清楚attention到底是怎麼回事
-# 反正就是這個Dense好像會「記錄」之前的結果，判斷現在這個lstm_out裡每一個值的重要性(softmax)，然後multiply
+# 反正就是這個Dense好像會「看」之前的lstm_out，判斷現在這個lstm_out裡每一個值的重要性(softmax)，然後multiply
 # 但是我們這裡因為文句長度不一，keras不讓我做tensor的Flatten，所以只能做個很不完整的實現
 #attention = TimeDistributed(Dense(ATTENTION_UNIT, activation = "softmax"))(lstm_out)
-attention = TimeDistributed(Dense(LSTM_UNIT, activation = "softmax"))(lstm_out)
-"""
-attention = Flatten()(attention)
+attention = TimeDistributed(Dense(ATTENTION_UNIT, activation = "softmax"))(lstm_out)
+print(attention.shape) # (TIME_STEP, ATTENTION_UNIT)
+attention = Lambda(lambda x: K.batch_flatten(x))(attention)
+print(attention.shape) # (TIME_STEP * ATTENTION_UNIT)
 attention = Activation('softmax')(attention)
-attention = RepeatVector(ATTENTION_UNIT)(attention)
+attention = RepeatVector(LSTM_UNIT)(attention)
+print(attention.shape) # (LSTM_UNIT, TIME_STEP * ATTENTION_UNIT)
 attention = Permute([2,1])(attention)
-"""
+print(attention.shape) # (TIME_STEP * ATTENTION_UNIT, LSTM_UNIT)
 representation = multiply([lstm_out, attention])
 #print(representation.shape)
 cap_out = Dense(VOCAB_SIZE, activation = "softmax")(representation)
@@ -189,7 +191,7 @@ def sparse_categorical_perplexity(y_true, y_pred) :
     return K.exp(K.sparse_categorical_crossentropy(y_true, y_pred))
 
 MemeGen.compile(loss = 'sparse_categorical_crossentropy',
-                metrcis = ["sparse_categorical_perplexity"],
+                metrics = ["sparse_categorical_perplexity"],
                 optimizer = sgd)
 
 #########################################
