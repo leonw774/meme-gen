@@ -12,8 +12,9 @@ from keras.layers import Activation, Concatenate, Dense, Dropout, Embedding, Fla
 
 from config import *
 from process_data import process_jokes, process_captions
-#process_jokes()
-#process_captions()
+process_jokes()
+process_captions()
+CREATE_NEW_W2V = True
 
 train_image_file_list = [("train/images/" + i) for i in os.listdir("train/images/")]
 train_caption_file_list = [("train/p_captions/" + i) for i in os.listdir("train/p_captions/")]
@@ -26,7 +27,6 @@ test_image_file_list = [("test/images/" + i) for i in os.listdir("test/images/")
 total_word_count = 0
 caption_list = []
 joke_list = []
-w2v_train_sentence_list = []
 print("\npreparing sentence to train...")
 
 # captions' sentence
@@ -36,11 +36,11 @@ for filename in train_caption_file_list :
     for line in line_list :
         word_list = line.lower().split(" ") # 對每一行，先變小寫，再用空格分成list
         total_word_count += len(word_list)
-        caption.extend(word_list) # 用extend來push是因為要push list to become a list
-    caption.extend(ENDING_MARK) # push ENDING_MARK into list
+        caption.extend(word_list) # 用extend來push是因為要push list-of-string into a list-of-string
+    caption.append(ENDING_MARK) # 用append來push是因為要push string into list-of-string
     if len(caption) > MAX_LENGTH : MAX_LENGTH = len(caption)
-    caption_list.append(caption) # 用append來push是因為要push list to become a "list of list"
-w2v_train_sentence_list.extend(caption_list)
+    caption_list.append(caption) # 用append來push是因為要push list-of-string into a "list of list-of-string"
+print(caption_list[random.randint(0, 100)])
 
 # jokes' sentence
 for filename in train_jokes_file_list :
@@ -48,20 +48,23 @@ for filename in train_jokes_file_list :
     joke_sentence = []
     for line in line_list :
         word_list = line.lower().split(" ")
-        word_list.extend(ENDING_MARK)
+        word_list.append(ENDING_MARK)
         if len(word_list) <= 1 : continue
         total_word_count += len(word_list)
         joke_sentence.extend(word_list)
     joke_list.append(joke_sentence)
-w2v_train_sentence_list.extend(joke_list)
+print(joke_list[random.randint(0, 100)])
 
 #########################################
 # Train W2V (if True)
 #########################################
 if CREATE_NEW_W2V :
+    w2v_train_sentence_list = []
+    w2v_train_sentence_list.extend(caption_list)
+    w2v_train_sentence_list.extend(joke_list)
     print("training w2v model...")
     word_model = word2vec.Word2Vec(w2v_train_sentence_list,
-        iter = 12,
+        iter = 16,
         sg = 1,
         size = WORD_VEC_SIZE,
         window = 5,
@@ -76,8 +79,8 @@ VOCAB_SIZE = word_vector.syn0.shape[0]
 print("vector size: ", WORD_VEC_SIZE)
 print("vocab size: ", VOCAB_SIZE)
 print("total_word_count:", total_word_count)
-#print(word_vector.most_similar("怕", topn = 10))
-
+print(word_vector.most_similar("貓咪", topn = 10))
+'''
 def make_sentence_matrix(word_list) :
     input_matrix  = np.zeros([1, len(word_list) + 1, WORD_VEC_SIZE], dtype=np.int32)
     target_matrix = np.zeros([1, len(word_list) + 1, 1], dtype=np.int32)
@@ -140,7 +143,6 @@ Imagenet = applications.mobilenet.MobileNet()
 Imagenet.trainable = False
 # 使用 MobileNet 是因為它佔用空間最小(17MB)
 # 論文裡，同Google的im2txt模型，用的是 InceptionV3
-# https://github.com/tensorflow/models/tree/master/research/im2txt/
 
 image_in = Input([None, None, 3])
 classes = Imagenet(image_in)
@@ -222,3 +224,4 @@ for test_img_name in test_image_file_list :
         pred_sentence += pred_word
         if pred_word == ENDING_MARK : continue
     open("test/captions/" + test_img_name[12:-3] + "txt", "w+",  encoding = 'utf-8-sig').write(pred_sentence)
+'''

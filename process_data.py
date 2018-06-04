@@ -1,5 +1,6 @@
 import os
 import re
+import platform
 import jieba_zhtw as jb
 
 jb.dt.cache_file = 'jieba.cache.zhtw'
@@ -20,8 +21,21 @@ ignore_list = [
 "時間",
 "引述",
 "※",
+"】",
+"【",
+"█",
+"◆",
+"／",
+"ˇ",
+"ˋ",
+"ˊ",
 "→"
 ]
+
+if platform.system() == "Linux" :
+    space_character = [' ', '\n', '\r']
+else :
+    space_character = [' ', '\n']
 
 def tag_remover(post_string) :
     temp = ""
@@ -33,10 +47,10 @@ def tag_remover(post_string) :
             continue
         elif (c == ' ' or c == '\n' or c == '\r') :
             if (temp == "") :
-                if (result.endswith(' ') or result.endswith('\n') or result.endswith('\r') or result == "") :
+                if any(result.endswith(x) for x in space_character) :
                     continue
-            elif (temp.endswith(' ') or temp.endswith('\n') or temp.endswith('\r')) :
-                continue                
+            elif any(temp.endswith(x) for x in space_character) :
+                continue
         
         if not is_ignored :
             if (c == '<') :
@@ -63,11 +77,11 @@ def tag_remover(post_string) :
 
     # ignoring lines for some word
     result_lines = result.split("\n")
-    ingored_result = ""
+    ignored_result = ""
     for line in result_lines :
         if all(x not in line for x in ignore_list) :
-            ingored_result += line
-    result = ingored_result
+            ignored_result += (line + "\n")
+    result = ignored_result
 
     # ignoring signature
     signature = result.find("--")
