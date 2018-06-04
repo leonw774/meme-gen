@@ -11,8 +11,6 @@ from keras.models import Model
 from keras.layers import Activation, Concatenate, Dense, Dropout, Embedding, Flatten, Input, Lambda, LSTM, merge, multiply, Permute, RepeatVector, TimeDistributed
 
 from config import *
-from process_data import process_captions
-process_captions()
 CREATE_NEW_W2V = True
 
 train_image_file_list = [("train/images/" + i) for i in os.listdir("train/images/")]
