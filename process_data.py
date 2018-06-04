@@ -22,10 +22,8 @@ ignore_list = [
 "引述",
 "※",
 "】",
-"【",
-"█",
-"◆",
-"／",
+"【", #靠北啊
+"▉","▊","▋","█","▍","▎","▌","▏","◆","◣","▼","◥","◤","◢","▆","▂","▃","◣","╲","﹨","／",
 "ˇ",
 "ˋ",
 "ˊ",
@@ -79,6 +77,7 @@ def tag_remover(post_string) :
     result_lines = result.split("\n")
     ignored_result = ""
     for line in result_lines :
+        if line == "" : continue
         if all(x not in line for x in ignore_list) :
             ignored_result += (line + "\n")
     result = ignored_result

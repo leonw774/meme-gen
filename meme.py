@@ -79,7 +79,7 @@ VOCAB_SIZE = word_vector.syn0.shape[0]
 print("vector size: ", WORD_VEC_SIZE)
 print("vocab size: ", VOCAB_SIZE)
 print("total_word_count:", total_word_count)
-print(word_vector.most_similar("貓咪", topn = 10))
+print(word_vector.most_similar("貓", topn = 10))
 '''
 def make_sentence_matrix(word_list) :
     input_matrix  = np.zeros([1, len(word_list) + 1, WORD_VEC_SIZE], dtype=np.int32)
