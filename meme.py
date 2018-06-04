@@ -17,7 +17,6 @@ CREATE_NEW_W2V = True
 
 train_image_file_list = [("train/images/" + i) for i in os.listdir("train/images/")]
 train_caption_file_list = [("train/p_captions/" + i) for i in os.listdir("train/p_captions/")]
-train_jokes_file_list = [("train/p_jokes/" + i) for i in os.listdir("train/p_jokes/")]
 test_image_file_list = [("test/images/" + i) for i in os.listdir("test/images/")]
 
 #########################################
