@@ -1,0 +1,8 @@
+CREATE_NEW_W2V = False
+WORD_VEC_SIZE = 200 # Suggest: 300
+MAX_LENGTH = 8
+ENDING_MARK = "<e>"
+
+LSTM_UNIT = 32 # Suggest: 512
+ATTENTION_UNIT = 1 # Suggest: 128???
+EPOCHS = 1

@@ -4,25 +4,21 @@ import numpy as np
 
 from imageio import imread
 from gensim.models import word2vec
-from keras import optimizers
+
+from keras import optimizers, applications
 from keras import backend as K
-from keras import applications
 from keras.models import Model
 from keras.layers import Activation, Concatenate, Dense, Dropout, Embedding, Flatten, Input, Lambda, LSTM, merge, multiply, Permute, RepeatVector, TimeDistributed
 
-CREATE_NEW_W2V = False
-WORD_VEC_SIZE = 200 # Suggest: 300
-MAX_LENGTH = 8
-LSTM_UNIT = 32 # Suggest: 512
-ATTENTION_UNIT = 1 # Suggest: 128???
-EPOCHS = 1
-ENDING_MARK = "<eof>"
-ENABLE_RANDOM_TRAINING = False
+from config import *
+from process_data import process_jokes, process_captions
+#process_jokes()
+#process_captions()
 
-training_image_file_list = [("train/images/" + i) for i in os.listdir("train/images/")]
-training_caption_file_list = [("train/p_captions/" + i) for i in os.listdir("train/p_captions/")]
-training_jokes_file_list = [("train/p_jokes/" + i) for i in os.listdir("train/p_jokes/")]
-testing_image_file_list = [("test/images/" + i) for i in os.listdir("test/images/")]
+train_image_file_list = [("train/images/" + i) for i in os.listdir("train/images/")]
+train_caption_file_list = [("train/p_captions/" + i) for i in os.listdir("train/p_captions/")]
+train_jokes_file_list = [("train/p_jokes/" + i) for i in os.listdir("train/p_jokes/")]
+test_image_file_list = [("test/images/" + i) for i in os.listdir("test/images/")]
 
 #########################################
 # Prepare W2V and Trainging Data
@@ -34,7 +30,7 @@ w2v_train_sentence_list = []
 print("\npreparing sentence to train...")
 
 # captions' sentence
-for filename in training_caption_file_list :
+for filename in train_caption_file_list :
     line_list = open(filename, 'r', encoding = 'utf-8-sig').readlines()
     caption = []
     for line in line_list :
@@ -47,7 +43,7 @@ for filename in training_caption_file_list :
 w2v_train_sentence_list.extend(caption_list)
 
 # jokes' sentence
-for filename in training_jokes_file_list :
+for filename in train_jokes_file_list :
     line_list = open(filename, 'r', encoding = 'utf-8-sig').readlines()
     joke_sentence = []
     for line in line_list :
@@ -109,28 +105,27 @@ def get_image(img_filename, resize = None) :
     return img
 
 #########################################
-# Paired Training Image Data Generator
+# Paired Training Data Generator
 #########################################
-def gen_pair_training_data(batch_num = 1, resize = None) :
-    count = 0
+def gen_pair_training_data(resize = None) :
     while(True) :
-        for i, img_filename in enumerate(training_image_file_list) :
-            count += 1
+        for i, img_filename in enumerate(train_image_file_list) :
+            #print(i, img_filename)
             img = get_image(img_filename)
             input_cap, target_cap = make_sentence_matrix(caption_list[i])
             yield [img, input_cap], target_cap
             # end if count
-        # end for training_image_file_list
+        # end for train_image_file_list
     #end infinite while
 # end def    
     
 #########################################
-# Random Training Image Data Generator
+# Random Training Data Generator
 # (random image with random jokes)
 #########################################
 def gen_random_training_data(resize = None) :
     while(True) :
-        img_filename = random.choice(training_image_file_list)
+        img_filename = random.choice(train_image_file_list)
         img = get_image(img_filename)
         joke_line = random.choice(joke_list)
         input_cap, target_cap = make_sentence_matrix(joke_line)
@@ -158,41 +153,39 @@ zeros = Lambda(lambda x: K.zeros_like(x), output_shape = lambda s: s)(state_in)
 # LSTM initial state: [hidden_state, memory_cell_state]; default is zero vectors
 lstm_out = LSTM(LSTM_UNIT, return_sequences = True, stateful = False) (cap_in, initial_state = [state_in, zeros])
 print(lstm_out.shape) # (BATCH, TIME_STEP, LSTM_UNIT)
+
 # Attention
 # 我也不太清楚attention到底是怎麼回事
 # 反正就是有一個Dense好像會「看」之前的lstm_out
-# 判斷現在這個lstm_out裡每一個值的重要性(softmax)，然後multiply
-# 我也不懂論文上的attention unit: 128是怎樣，反正從網路上的code來看，純keras或許只能用1
-attention = TimeDistributed(Dense(1, activation = "softmax")(lstm_out)
-# (BATCH, TIME_STEP, ATTENTION_UNIT) /* ATTENTION_UNIT = 1 */
+# 判斷現在這個lstm_out裡每一個值的重要性(softmax)
+# 我不懂論文上的attention unit: 128是怎樣，讓它大於1好像會超複雜
+# 反正從網路上的code來看，大家都用1
 
+attention = TimeDistributed(Dense(1, activation = "softmax"))(lstm_out)
+# (BATCH, TIME_STEP, ATTENTION_UNIT) /* ATTENTION_UNIT = 1 */
 attention = Lambda(lambda x: K.batch_flatten(x))(attention)
 # (BATCH, TIME_STEP)
-
 attention = RepeatVector(LSTM_UNIT)(attention)
 # (BATCH, LSTM_UNIT, TIME_STEP)
-
 attention = Permute([2,1])(attention)
 # (BATCH, TIME_STEP, LSTM_UNIT)
 
 representation = multiply([lstm_out, attention])
 cap_out = Dense(VOCAB_SIZE, activation = "softmax")(representation)
 
-# Model
-MemeGen = Model([image_in, cap_in], cap_out)
-MemeGen.summary()
-# 三種optimizers
+# Optimizers
 # 論文裡說試了SGD和Mometum，然後SGD不錯
-# 不過我在其他地方看到RMSprop也很適合訓練RNN
 sgd = optimizers.sgd(lr = 0.01)
 sgd_nesterov = optimizers.sgd(lr = 0.01, momentum = 0.9, nesterov = True)
-rmsprop = optimizers.RMSprop(lr = 0.01)
 
-# metrics: perplexity
-# 反正好像就是自然常數的熵次方啦，我懶得看數學推導
+# Metrics: Perplexity
+# 反正好像就是自然常數的熵次方啦，懶得看數學推導
 def sparse_categorical_perplexity(y_true, y_pred) :
     return K.exp(K.sparse_categorical_crossentropy(y_true, y_pred))
 
+# Define Model
+MemeGen = Model([image_in, cap_in], cap_out)
+MemeGen.summary()
 MemeGen.compile(loss = "sparse_categorical_crossentropy",
                 metrics = [sparse_categorical_perplexity],
                 optimizer = sgd)
@@ -200,14 +193,12 @@ MemeGen.compile(loss = "sparse_categorical_crossentropy",
 #########################################
 # Train Model
 #########################################
-image_data_size = len(training_image_file_list)
-for epoch in range(EPOCHS) :
-    print(epoch, "/", EPOCHS)
-    # keras不給我用train_on_batch，因為每張圖大小不一樣，算了沒差
-    MemeGen.fit_generator(generator = gen_pair_training_data(2),
-        steps_per_epoch = image_data_size,
-        epochs = 1,
-        verbose = 1)
+# keras不給我用train_on_batch，因為每張圖大小不一樣，算了沒差
+image_data_size = len(train_image_file_list)
+MemeGen.fit_generator(generator = gen_pair_training_data(),
+                      steps_per_epoch = image_data_size,
+                      epochs = EPOCHS,
+                      verbose = 1)
 
 #########################################
 # Predict Test
@@ -220,10 +211,10 @@ def sample(prediction, temperature = 1.0) :
     probas = np.random.multinomial(1, prediction, 1)
     return probas
 
-for test_img_name in testing_image_file_list :
+for test_img_name in test_image_file_list :
     print(test_img_name)
     pred_sentence = ""
-    for i in range(32) :
+    for i in range(MAX_LENGTH) :
         input_matrix, _ = make_sentence_matrix(pred_sentence)
         pred = MemeGen.predict([get_image(test_img_name), input_matrix])
         pred = sample(pred[0, -1], temperature = 0.7)

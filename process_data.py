@@ -3,8 +3,10 @@ import re
 import jieba_zhtw as jb
 
 jb.dt.cache_file = 'jieba.cache.zhtw'
-postpath = "jokes/"
-processed_path = "p_jokes/"
+joke_path = "train/jokes/"
+cap_path = "train/captions/"
+p_joke_path = "train/p_jokes/"
+p_cap_path = "train/p_captions/"
 
 ignore_list = [
 "轉錄",
@@ -20,11 +22,6 @@ ignore_list = [
 "※",
 "→"
 ]
-
-filename_list = []
-for file in os.listdir(postpath) :
-    filename_list.append(file)
-filename_list = sorted(filename_list)
 
 def tag_remover(post_string) :
     temp = ""
@@ -79,11 +76,26 @@ def tag_remover(post_string) :
     return result
 # end def tag_remover
 
-for i, filename in enumerate(filename_list) :
-    post_string = ""
-    if i % 10 == 0 : print(i)
-    post_string = open(postpath + filename, 'r', encoding = 'utf-8-sig').read()
-    post_string = tag_remover(post_string)
-    post_string = re.sub(": ", "", post_string)
-    cut_post = jb.cut(post_string, cut_all = False)
-    open(processed_path + filename, 'w+', encoding = 'utf-8-sig').write(" ".join(cut_post))
+def process_jokes() :
+    filename_list = []
+    for file in os.listdir(joke_path) :
+        filename_list.append(file)
+    filename_list = sorted(filename_list)
+    for i, filename in enumerate(filename_list) :
+        string = ""
+        string = open(joke_path + filename, 'r', encoding = 'utf-8-sig').read()
+        string = tag_remover(string)
+        string = re.sub(": ", "", string)
+        cut_joke = jb.cut(string, cut_all = False)
+        open(p_joke_path + filename, 'w+', encoding = 'utf-8-sig').write(" ".join(cut_joke))
+
+def process_captions() :
+    filename_list = os.listdir(cap_path)
+    for i, filename in enumerate(filename_list) :
+        string = ""
+        try :
+            string = open(cap_path + filename, 'r', encoding = 'utf-8-sig').read()
+        except :
+            string = open(cap_path + filename, 'r').read()
+        cut_cap = jb.cut(string, cut_all = False)
+        open(p_cap_path + filename, 'w+', encoding = 'utf-8-sig').write(" ".join(cut_cap))

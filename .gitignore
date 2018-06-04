@@ -1,5 +1,7 @@
 /jieba_zhtw
 /train
+/test
+/__pycache__
 *.model
 *.h5
 *.jpg
