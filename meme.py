@@ -52,7 +52,7 @@ if CREATE_NEW_W2V :
         window = 5,
         workers = 4,
         min_count = 1)
-    word_model.save("meme_word2vec_by_char.model")
+    word_model.save("meme_word2vec.model")
 else :
      word_model = word2vec.Word2Vec.load("meme_word2vec_by_char.model")
 del w2v_train_sentence_list
@@ -62,7 +62,7 @@ print("vector size: ", WORD_VEC_SIZE)
 print("vocab size: ", VOCAB_SIZE)
 print("total_word_count:", total_word_count)
 print(word_vector.most_similar("我", topn = 10))
-'''
+
 def make_sentence_matrix(word_list) :
     input_matrix  = np.zeros([1, len(word_list) + 1, WORD_VEC_SIZE], dtype=np.int32)
     target_matrix = np.zeros([1, len(word_list) + 1, 1], dtype=np.int32)
@@ -193,4 +193,3 @@ for test_img_name in test_image_file_list :
         pred_sentence += pred_word
         if pred_word == ENDING_MARK : continue
     open("test/captions/" + test_img_name[12:-3] + "txt", "w+",  encoding = 'utf-8-sig').write(pred_sentence)
-'''
