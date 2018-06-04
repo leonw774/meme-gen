@@ -90,6 +90,7 @@ def tag_remover(post_string) :
 # end def tag_remover
 
 def process_jokes() :
+    jb.load_userdict('meme_dictionary.dic')
     filename_list = []
     for file in os.listdir(joke_path) :
         filename_list.append(file)
@@ -103,6 +104,7 @@ def process_jokes() :
         open(p_joke_path + filename, 'w+', encoding = 'utf-8-sig').write(" ".join(cut_joke))
 
 def process_captions() :
+    jb.load_userdict('meme_dictionary.dic')
     filename_list = os.listdir(cap_path)
     for i, filename in enumerate(filename_list) :
         string = ""

@@ -11,8 +11,7 @@ from keras.models import Model
 from keras.layers import Activation, Concatenate, Dense, Dropout, Embedding, Flatten, Input, Lambda, LSTM, merge, multiply, Permute, RepeatVector, TimeDistributed
 
 from config import *
-from process_data import process_jokes, process_captions
-process_jokes()
+from process_data import process_captions
 process_captions()
 CREATE_NEW_W2V = True
 
@@ -22,7 +21,7 @@ train_jokes_file_list = [("train/p_jokes/" + i) for i in os.listdir("train/p_jok
 test_image_file_list = [("test/images/" + i) for i in os.listdir("test/images/")]
 
 #########################################
-# Prepare W2V and Trainging Data
+# Prepare Trainging Data
 #########################################
 total_word_count = 0
 caption_list = []
@@ -42,34 +41,20 @@ for filename in train_caption_file_list :
     caption_list.append(caption) # 用append來push是因為要push list-of-string into a "list of list-of-string"
 print(caption_list[random.randint(0, 100)])
 
-# jokes' sentence
-for filename in train_jokes_file_list :
-    line_list = open(filename, 'r', encoding = 'utf-8-sig').readlines()
-    joke_sentence = []
-    for line in line_list :
-        word_list = line.lower().split(" ")
-        word_list.append(ENDING_MARK)
-        if len(word_list) <= 1 : continue
-        total_word_count += len(word_list)
-        joke_sentence.extend(word_list)
-    joke_list.append(joke_sentence)
-print(joke_list[random.randint(0, 100)])
-
 #########################################
 # Train W2V (if True)
 #########################################
 if CREATE_NEW_W2V :
     w2v_train_sentence_list = []
     w2v_train_sentence_list.extend(caption_list)
-    w2v_train_sentence_list.extend(joke_list)
     print("training w2v model...")
     word_model = word2vec.Word2Vec(w2v_train_sentence_list,
-        iter = 16,
+        iter = 20,
         sg = 1,
         size = WORD_VEC_SIZE,
         window = 5,
         workers = 4,
-        min_count = 3)
+        min_count = 1)
     word_model.save("meme_word2vec_by_char.model")
 else :
      word_model = word2vec.Word2Vec.load("meme_word2vec_by_char.model")
@@ -79,7 +64,7 @@ VOCAB_SIZE = word_vector.syn0.shape[0]
 print("vector size: ", WORD_VEC_SIZE)
 print("vocab size: ", VOCAB_SIZE)
 print("total_word_count:", total_word_count)
-print(word_vector.most_similar("貓", topn = 10))
+print(word_vector.most_similar("我", topn = 10))
 '''
 def make_sentence_matrix(word_list) :
     input_matrix  = np.zeros([1, len(word_list) + 1, WORD_VEC_SIZE], dtype=np.int32)
@@ -120,20 +105,7 @@ def gen_pair_training_data(resize = None) :
             # end if count
         # end for train_image_file_list
     #end infinite while
-# end def    
-    
-#########################################
-# Random Training Data Generator
-# (random image with random jokes)
-#########################################
-def gen_random_training_data(resize = None) :
-    while(True) :
-        img_filename = random.choice(train_image_file_list)
-        img = get_image(img_filename)
-        joke_line = random.choice(joke_list)
-        input_cap, target_cap = make_sentence_matrix(joke_line)
-        yield [img, input_cap], target_cap
-
+# end def
 
 #########################################
 # Build Model
