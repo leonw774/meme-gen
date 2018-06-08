@@ -27,7 +27,11 @@ print("\npreparing sentence to train...")
 
 # captions' sentence
 for filename in train_caption_file_list :
-    line_list = open(filename, 'r', encoding = 'utf-8-sig').readlines()
+    try :
+        line_list = open(filename, 'r', encoding = 'utf-8-sig').readlines()
+    except :
+        print("No processed caption found. Please run process_captions.py first.")
+        exit()
     caption = []
     for line in line_list :
         word_list = line.lower().split(" ") # 對每一行，先變小寫，再用空格分成list
@@ -36,7 +40,7 @@ for filename in train_caption_file_list :
     caption.append(ENDING_MARK) # 用append來push是因為要push string into list-of-string
     if len(caption) > MAX_LENGTH : MAX_LENGTH = len(caption)
     caption_list.append(caption) # 用append來push是因為要push list-of-string into a "list of list-of-string"
-print(caption_list[random.randint(0, 100)])
+#print(caption_list[random.randint(0, 100)])
 
 #########################################
 # Train W2V (if True)
