@@ -1,8 +1,8 @@
 
-WORD_VEC_SIZE = 200 # Suggest: 300
+WORD_VEC_SIZE = 256 # Suggest: 300
 MAX_LENGTH = 8
 ENDING_MARK = "<e>"
 
-LSTM_UNIT = 32 # Suggest: 512
+LSTM_UNIT = 64 # Suggest: 512
 ATTENTION_UNIT = 1 # Suggest: 128???
-EPOCHS = 1
+EPOCHS = 200 # them: 400000 * 32; Us: 471 * 32000?

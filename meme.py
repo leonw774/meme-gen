@@ -112,7 +112,8 @@ def gen_pair_training_data(resize = None) :
 # Build Model
 #########################################
 ### Image Encoder ###
-Imagenet = applications.mobilenet.MobileNet()
+Imagenet = applications.inception_v3.InceptionV3()
+#Imagenet = applications.mobilenet.MobileNet()
 Imagenet.trainable = False
 # 使用 MobileNet 是因為它佔用空間最小(17MB)
 # 論文裡，同Google的im2txt模型，用的是 InceptionV3
@@ -150,8 +151,8 @@ cap_out = Dense(VOCAB_SIZE, activation = "softmax")(representation)
 
 # Optimizers
 # 論文裡說試了SGD和Mometum，然後SGD不錯
-sgd = optimizers.sgd(lr = 0.01)
-sgd_nesterov = optimizers.sgd(lr = 0.01, momentum = 0.9, nesterov = True)
+sgd = optimizers.sgd(lr = 0.1)
+sgd_nesterov = optimizers.sgd(lr = 0.1, momentum = 0.9, nesterov = True)
 
 # Metrics: Perplexity
 # 反正好像就是自然常數的熵次方啦，懶得看數學推導
@@ -170,7 +171,7 @@ MemeGen.compile(loss = "sparse_categorical_crossentropy",
 #########################################
 # keras不給我用train_on_batch，因為每張圖大小不一樣，算了沒差
 image_data_size = len(train_image_file_list)
-MemeGen.fit_generator(generator = gen_pair_training_data(),
+meme_hisory = MemeGen.fit_generator(generator = gen_pair_training_data(),
                       steps_per_epoch = image_data_size,
                       epochs = EPOCHS,
                       verbose = 1)
@@ -194,6 +195,9 @@ for test_img_name in test_image_file_list :
         pred = MemeGen.predict([get_image(test_img_name), input_matrix])
         pred = sample(pred[0, -1], temperature = 0.7)
         pred_word = word_vector.wv.index2word[np.argmax(pred[0])]
+        if pred_word == ENDING_MARK : break
         pred_sentence += pred_word
         if pred_word == ENDING_MARK : continue
     open("test/captions/" + test_img_name[12:-3] + "txt", "w+",  encoding = 'utf-8-sig').write(pred_sentence)
+
+print(meme_hisory[1])
