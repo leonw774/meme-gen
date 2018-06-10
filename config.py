@@ -5,4 +5,4 @@ ENDING_MARK = "<e>"
 
 LSTM_UNIT = 64 # Suggest: 512
 ATTENTION_UNIT = 1 # Suggest: 128???
-EPOCHS = 200 # them: 400000 * 32; Us: 471 * 32000?
+EPOCHS = 1000 # them: 400000 * 32; Us: 471 * 32000?

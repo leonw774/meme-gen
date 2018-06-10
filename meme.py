@@ -1,5 +1,6 @@
 import os
 import random
+import datetime
 import numpy as np
 
 from imageio import imread
@@ -151,8 +152,9 @@ cap_out = Dense(VOCAB_SIZE, activation = "softmax")(representation)
 
 # Optimizers
 # 論文裡說試了SGD和Mometum，然後SGD不錯
-sgd = optimizers.sgd(lr = 0.1)
-sgd_nesterov = optimizers.sgd(lr = 0.1, momentum = 0.9, nesterov = True)
+sgd = optimizers.sgd(lr = 0.02)
+sgd_nesterov = optimizers.sgd(lr = 0.02, momentum = 0.9, nesterov = True)
+adam = optimizers.Adam(lr = 0.01)
 
 # Metrics: Perplexity
 # 反正好像就是自然常數的熵次方啦，懶得看數學推導
@@ -200,4 +202,4 @@ for test_img_name in test_image_file_list :
         if pred_word == ENDING_MARK : continue
     open("test/captions/" + test_img_name[12:-3] + "txt", "w+",  encoding = 'utf-8-sig').write(pred_sentence)
 
-print(meme_hisory[1])
+print(meme_hisory.history)
