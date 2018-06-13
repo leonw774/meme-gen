@@ -1,6 +1,5 @@
 import os
 import random
-import datetime
 import numpy as np
 
 from imageio import imread
@@ -9,7 +8,7 @@ from gensim.models import word2vec
 from keras import optimizers, applications
 from keras import backend as K
 from keras.models import Model
-from keras.layers import Activation, Concatenate, Dense, Dropout, Embedding, Flatten, Input, Lambda, LSTM, merge, multiply, Permute, RepeatVector, TimeDistributed
+from keras.layers import Activation, Concatenate, Dense, Dropout, Flatten, Input, Lambda, LSTM, merge, multiply, Permute, RepeatVector, TimeDistributed
 
 from config import *
 CREATE_NEW_W2V = True
@@ -59,14 +58,14 @@ if CREATE_NEW_W2V :
         min_count = 1)
     word_model.save("meme_word2vec.model")
 else :
-     word_model = word2vec.Word2Vec.load("meme_word2vec_by_char.model")
+     word_model = word2vec.Word2Vec.load("meme_word2vec.model")
 del w2v_train_sentence_list
 word_vector = word_model.wv
 VOCAB_SIZE = word_vector.syn0.shape[0]
 print("vector size: ", WORD_VEC_SIZE)
 print("vocab size: ", VOCAB_SIZE)
 print("total_word_count:", total_word_count)
-print(word_vector.most_similar("我", topn = 10))
+#print(word_vector.most_similar("我", topn = 10))
 
 def make_sentence_matrix(word_list) :
     input_matrix  = np.zeros([1, len(word_list) + 1, WORD_VEC_SIZE], dtype=np.int32)
