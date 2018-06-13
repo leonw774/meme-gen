@@ -19,7 +19,7 @@ train_caption_file_list = [("train/p_captions/" + i) for i in os.listdir("train/
 test_image_file_list = [("test/images/" + i) for i in os.listdir("test/images/")]
 
 #########################################
-# Prepare Trainging Data
+# Prepare Training Data
 #########################################
 total_word_count = 0
 caption_list = []
@@ -51,7 +51,7 @@ if CREATE_NEW_W2V :
     w2v_train_sentence_list.extend(caption_list)
     print("training w2v model...")
     word_model = word2vec.Word2Vec(w2v_train_sentence_list,
-        iter = 20,
+        iter = 24,
         sg = 1,
         size = WORD_VEC_SIZE,
         window = 5,
@@ -130,7 +130,7 @@ zeros = Lambda(lambda x: K.zeros_like(x), output_shape = lambda s: s)(state_in)
 # LSTM initial state: [hidden_state, memory_cell_state]; default is zero vectors
 lstm_out = LSTM(LSTM_UNIT, return_sequences = True, stateful = False) (cap_in, initial_state = [state_in, zeros])
 print(lstm_out.shape) # (BATCH, TIME_STEP, LSTM_UNIT)
-
+'''
 # Attention
 # 我也不太清楚attention到底是怎麼回事
 # 反正就是有一個Dense好像會「看」之前的lstm_out
@@ -148,12 +148,13 @@ attention = Permute([2,1])(attention)
 # (BATCH, TIME_STEP, LSTM_UNIT)
 
 representation = multiply([lstm_out, attention])
-cap_out = Dense(VOCAB_SIZE, activation = "softmax")(representation)
+'''
+cap_out = Dense(VOCAB_SIZE, activation = "softmax")(lstm_out)
 
 # Optimizers
 # 論文裡說試了SGD和Mometum，然後SGD不錯
 sgd = optimizers.sgd(lr = 0.02)
-sgd_nesterov = optimizers.sgd(lr = 0.02, momentum = 0.9, nesterov = True)
+sgd_nesterov = optimizers.sgd(lr = 0.1, momentum = 0.9, nesterov = True)
 adam = optimizers.Adam(lr = 0.01)
 
 # Metrics: Perplexity
@@ -166,7 +167,7 @@ MemeGen = Model([image_in, cap_in], cap_out)
 MemeGen.summary()
 MemeGen.compile(loss = "sparse_categorical_crossentropy",
                 metrics = [sparse_categorical_perplexity],
-                optimizer = sgd)
+                optimizer = sgd_nesterov)
 
 #########################################
 # Train Model
@@ -202,4 +203,4 @@ for test_img_name in test_image_file_list :
         if pred_word == ENDING_MARK : continue
     open("test/captions/" + test_img_name[12:-3] + "txt", "w+",  encoding = 'utf-8-sig').write(pred_sentence)
 
-print(meme_hisory.history)
+#print(meme_hisory.history)
