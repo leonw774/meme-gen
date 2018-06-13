@@ -130,25 +130,6 @@ zeros = Lambda(lambda x: K.zeros_like(x), output_shape = lambda s: s)(state_in)
 # LSTM initial state: [hidden_state, memory_cell_state]; default is zero vectors
 lstm_out = LSTM(LSTM_UNIT, return_sequences = True, stateful = False) (cap_in, initial_state = [state_in, zeros])
 print(lstm_out.shape) # (BATCH, TIME_STEP, LSTM_UNIT)
-'''
-# Attention
-# 我也不太清楚attention到底是怎麼回事
-# 反正就是有一個Dense好像會「看」之前的lstm_out
-# 判斷現在這個lstm_out裡每一個值的重要性(softmax)
-# 我不懂論文上的attention unit: 128是怎樣，讓它大於1好像會超複雜
-# 反正從網路上的code來看，大家都用1
-
-attention = TimeDistributed(Dense(1, activation = "softmax"))(lstm_out)
-# (BATCH, TIME_STEP, ATTENTION_UNIT) /* ATTENTION_UNIT = 1 */
-attention = Lambda(lambda x: K.batch_flatten(x))(attention)
-# (BATCH, TIME_STEP)
-attention = RepeatVector(LSTM_UNIT)(attention)
-# (BATCH, LSTM_UNIT, TIME_STEP)
-attention = Permute([2,1])(attention)
-# (BATCH, TIME_STEP, LSTM_UNIT)
-
-representation = multiply([lstm_out, attention])
-'''
 cap_out = Dense(VOCAB_SIZE, activation = "softmax")(lstm_out)
 
 # Optimizers
