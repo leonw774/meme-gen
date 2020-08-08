@@ -180,7 +180,6 @@ for test_img_name in test_image_file_list :
         pred_word = word_vector.wv.index2word[np.argmax(pred[0])]
         if pred_word == ENDING_MARK : break
         pred_sentence += pred_word
-        if pred_word == ENDING_MARK : continue
     open("test/captions/" + test_img_name[12:-3] + "txt", "w+",  encoding = 'utf-8-sig').write(pred_sentence)
 
 #print(meme_hisory.history)
